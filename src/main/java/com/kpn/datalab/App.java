@@ -12,6 +12,8 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.commons.codec.binary.Hex;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -22,16 +24,28 @@ import java.io.IOException;
  */
 public class App 
 {
-    public static void main( String[] args ) throws IOException {
-        test_function_generation();
+    public static void main( String[] args ) throws IOException, NoSuchMethodException, NoSuchFieldException {
+        //test_function_generation();
+
         Schema schema = new Schema.Parser().parse(new File("src/main/avro/user.avsc"));
-        test_nocode(schema);
-        test_read_nocode(schema);
+        AvroSerializer.instance().setUp(schema);
+        byte[] bytes = test_nocode(schema);
+        test_read_nocode_no_schema(schema, bytes);
     }
 
-    public static void test_read_nocode(Schema schema) throws IOException {
+    public static void test_read_nocode_no_schema(Schema schema, byte[] bytes) throws IOException {
         // Deserialize users from disk
-        File file = new File("users.avro");
+        System.out.println(Hex.encodeHexString(bytes));
+        User u = (User) AvroSerializer.instance().deserialize(bytes);
+            System.out.println(u);
+
+            GenericRecord u2 = AvroSerializer.instance().deserialize(bytes);
+            System.out.println(u2);
+
+    }
+    public static void test_read_nocode(Schema schema, byte[] bytes) throws IOException {
+        // Deserialize users from disk
+        File file = new File("users2.avro-noschema");
         DatumReader<GenericRecord> datumReader = new GenericDatumReader<GenericRecord>(schema);
         DataFileReader<GenericRecord> dataFileReader = new DataFileReader<GenericRecord>(file, datumReader);
         GenericRecord user = null;
@@ -44,10 +58,7 @@ public class App
 
         }
     }
-    public static void test_nocode(Schema schema) throws IOException {
-
-
-
+    public static byte[] test_nocode(Schema schema) throws IOException, NoSuchMethodException, NoSuchFieldException {
 
         GenericRecord user1 = new GenericData.Record(schema);
         user1.put("name", "Alyssa");
@@ -58,7 +69,12 @@ public class App
         user2.put("name", "Ben");
         user2.put("favorite_number", 7);
         user2.put("favorite_color", "red");
+        //writeGenericRecord(schema, user1, user2);
+        User u = new User("Maja", 1,"rood");
+        return AvroSerializer.instance().serialize(user2);
+    }
 
+    public static void writeGenericRecord(Schema schema, GenericRecord user1, GenericRecord user2) throws IOException {
         // Serialize user1 and user2 to disk
         File file = new File("users2.avro");
         DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
@@ -67,7 +83,6 @@ public class App
         dataFileWriter.append(user1);
         dataFileWriter.append(user2);
         dataFileWriter.close();
-
     }
 
     public static void test_function_generation() throws IOException {
