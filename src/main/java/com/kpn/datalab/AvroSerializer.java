@@ -29,22 +29,24 @@ public class AvroSerializer
     private DatumWriter<GenericRecord> writer;
     
     private ByteArrayOutputStream baos;
-    
-    private AvroSerializer() { this.inited = false; }
-    
-    public synchronized static AvroSerializer instance() 
-    {
-        if(instance == null)
-            instance = new AvroSerializer();
-        
-        return instance;
+
+    public AvroSerializer(Schema reader_writer) {
+        this(reader_writer, null);
+    }
+
+    public AvroSerializer(Schema writer, Schema reader) {
+        if (reader != null)
+            // writer reader
+            this.reader = new SpecificDatumReader<>(writer, reader);
+        else
+            this.reader = new SpecificDatumReader<>(writer);
+        this.writer = new SpecificDatumWriter<>(writer);
+        this.baos = new ByteArrayOutputStream();
+        this.inited = true;
     }
     
     public byte[] serialize(Object msg) throws IOException, IllegalStateException
     {
-        if(!inited)
-            throw new IllegalStateException("Serializer must be initialized");
-        
         this.baos.reset();
         BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(this.baos, null);
         
@@ -66,15 +68,7 @@ public class AvroSerializer
         return reader.read(null, decoder);
     }
     
-    public void setUp(Schema schema) throws IOException
-    {
-        this.reader = new SpecificDatumReader<>(schema);
-        this.writer = new SpecificDatumWriter<>(schema);
-        this.baos = new ByteArrayOutputStream();
-        this.inited = true;
-    }
-    
-    public void tearDown() throws IOException 
+    public void tearDown() throws IOException
     {
         this.reader = null;
         this.writer = null;
